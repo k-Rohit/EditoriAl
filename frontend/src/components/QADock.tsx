@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, X, Mic, MicOff } from 'lucide-react';
-import { type ChatMessage } from '@/data/mockData';
 import { chatWithStory } from '@/services/api';
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'ai';
+  content: string;
+  sources?: string[];
+}
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 
 interface QADockProps {

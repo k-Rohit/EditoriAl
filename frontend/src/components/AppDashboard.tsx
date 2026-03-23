@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageCircle, Menu, X, Home, Zap, BarChart3 } from 'lucide-react';
 import AppSidebar from '@/components/AppSidebar';
 import BriefingPanel from '@/components/BriefingPanel';
 import DeepDivePanel from '@/components/DeepDivePanel';
@@ -20,9 +20,19 @@ const AppDashboard = ({ story, sessionId, articleCount, articleMeta, onNewSearch
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingQuestion, setPendingQuestion] = useState<string | undefined>();
   const [chatOpen, setChatOpen] = useState(true);
+  const [deepgramKey, setDeepgramKey] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_BASE || ''}/api/config`)
+      .then(r => r.json())
+      .then(d => { if (d.deepgramApiKey) setDeepgramKey(d.deepgramApiKey); })
+      .catch(() => {});
+  }, []);
 
   const handleSelectStory = (title: string) => {
     setSearchQuery('');
+    setSidebarOpen(false);
     onNewSearch(title);
   };
 
@@ -37,36 +47,98 @@ const AppDashboard = ({ story, sessionId, articleCount, articleMeta, onNewSearch
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
+      setSidebarOpen(false);
       onNewSearch(searchQuery.trim());
     }
   };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      <AppSidebar
-        onSelectStory={handleSelectStory}
-        activeMode={mode}
-        onModeChange={setMode}
-        searchQuery={searchQuery}
-        onSearch={handleSearch}
-        onSearchSubmit={handleSearchSubmit}
-        onGoHome={onGoHome}
-      />
+      {/* Mobile top bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-background/90 backdrop-blur-md border-b border-border lg:hidden">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-primary" />
+            <span className="text-sm font-semibold text-foreground">ET Chronicle</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Mobile mode toggle */}
+          <div className="flex gap-0.5 p-0.5 bg-secondary rounded-lg">
+            <button
+              onClick={() => setMode('briefing')}
+              className={`p-1.5 rounded-md transition-all ${mode === 'briefing' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setMode('deepdive')}
+              className={`p-1.5 rounded-md transition-all ${mode === 'deepdive' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <button
+            onClick={onGoHome}
+            className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Home className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute left-0 top-0 bottom-0 w-72 animate-slide-in-right" onClick={(e) => e.stopPropagation()}>
+            <AppSidebar
+              onSelectStory={handleSelectStory}
+              activeMode={mode}
+              onModeChange={setMode}
+              searchQuery={searchQuery}
+              onSearch={handleSearch}
+              onSearchSubmit={handleSearchSubmit}
+              onGoHome={onGoHome}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block">
+        <AppSidebar
+          onSelectStory={handleSelectStory}
+          activeMode={mode}
+          onModeChange={setMode}
+          searchQuery={searchQuery}
+          onSearch={handleSearch}
+          onSearchSubmit={handleSearchSubmit}
+          onGoHome={onGoHome}
+        />
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto py-10 px-10 lg:px-14 relative">
+      <main className="flex-1 overflow-y-auto pt-16 lg:pt-10 pb-10 px-4 sm:px-8 lg:px-14 relative">
         {mode === 'briefing' ? (
           <BriefingPanel
             story={story}
             articleCount={articleCount}
             articleMeta={articleMeta}
             onAskQuestion={handleAskQuestion}
+            deepgramApiKey={deepgramKey || undefined}
           />
         ) : (
-          <DeepDivePanel story={story} />
+          <DeepDivePanel story={story} deepgramApiKey={deepgramKey || undefined} />
         )}
 
-        {/* Chat toggle button (visible when chat is closed) */}
+        {/* Chat toggle button */}
         {!chatOpen && (
           <button
             onClick={() => setChatOpen(true)}

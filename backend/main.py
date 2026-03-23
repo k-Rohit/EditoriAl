@@ -12,7 +12,7 @@ load_dotenv()
 
 from news_scraper import search_and_extract
 from ai_engine import generate_briefing, chat_answer
-from trending import get_trending_stories
+from trending import get_trending_stories, get_local_news
 
 app = FastAPI(title="ET Chronicle API")
 
@@ -37,6 +37,10 @@ class ChatRequest(BaseModel):
     session_id: str
     question: str
     chat_history: list[dict] = []
+
+class LocalNewsRequest(BaseModel):
+    city: str
+    state: str = ""
 
 
 # ── Endpoints ────────────────────────────────────────────────────
@@ -139,6 +143,21 @@ async def trending():
     except Exception as e:
         print(f"Error in /api/trending: {e}")
         raise HTTPException(500, f"Failed to fetch trending: {str(e)}")
+
+
+@app.post("/api/local-news")
+async def local_news(req: LocalNewsRequest):
+    """Fetch local/regional news for a city from Economic Times."""
+    city = req.city.strip()
+    if not city:
+        raise HTTPException(400, "City cannot be empty")
+
+    try:
+        result = await get_local_news(city, req.state)
+        return result
+    except Exception as e:
+        print(f"Error in /api/local-news: {e}")
+        raise HTTPException(500, f"Failed to fetch local news: {str(e)}")
 
 
 @app.get("/api/config")

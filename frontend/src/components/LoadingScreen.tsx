@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Zap, X } from 'lucide-react';
 
 interface LoadingScreenProps {
   onComplete: () => void;
@@ -42,7 +42,7 @@ const LoadingScreen = ({ onComplete, onCancel }: LoadingScreenProps) => {
       <div className="relative text-center max-w-md mx-auto px-8">
         {/* Icon */}
         <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-8 animate-pulse-glow">
-          <Sparkles className="w-7 h-7 text-primary" />
+          <Zap className="w-7 h-7 text-primary" />
         </div>
 
         {/* Steps */}

@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { ChevronDown, ExternalLink, Newspaper } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronDown, ExternalLink, Newspaper, Volume2, Pause, Loader2 } from 'lucide-react';
 import type { StoryData, ArticleMeta } from '@/services/api';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 
 const sentimentColor = (s: string) =>
   s === 'positive' ? 'bg-sentiment-positive/10 text-sentiment-positive border-sentiment-positive/20' :
@@ -17,21 +18,45 @@ interface BriefingPanelProps {
   articleCount: number;
   articleMeta: ArticleMeta[];
   onAskQuestion: (q: string) => void;
+  deepgramApiKey?: string;
 }
 
-const BriefingPanel = ({ story, articleCount, articleMeta, onAskQuestion }: BriefingPanelProps) => {
+const BriefingPanel = ({ story, articleCount, articleMeta, onAskQuestion, deepgramApiKey }: BriefingPanelProps) => {
   const [sourcesOpen, setSourcesOpen] = useState(false);
+
+  // Build TTS text
+  const ttsText = useMemo(() => {
+    const parts = [story.title, story.summary];
+    story.keyFacts.forEach((f, i) => parts.push(`Fact ${i + 1}: ${f}`));
+    return parts.join('. ');
+  }, [story.title, story.summary, story.keyFacts]);
+
+  const { isPlaying, isLoading: ttsLoading, play, pause, stop } = useTextToSpeech({
+    text: ttsText,
+    deepgramApiKey,
+  });
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-fade-up">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
           <p className="text-xs uppercase tracking-[0.15em] text-primary/70 font-medium">AI Briefing</p>
           <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
             <Newspaper className="w-3 h-3" />
             {articleCount} articles analyzed
           </span>
+
+          {/* TTS Play/Pause */}
+          <button
+            onClick={isPlaying ? pause : play}
+            disabled={ttsLoading}
+            className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-primary/20 text-primary/80 hover:bg-primary/5 hover:border-primary/40 transition-all duration-200 active:scale-[0.96] disabled:opacity-40"
+            title={isPlaying ? 'Pause audio' : 'Listen to briefing'}
+          >
+            {ttsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : isPlaying ? <Pause className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+            {ttsLoading ? 'Loading…' : isPlaying ? 'Pause' : 'Listen'}
+          </button>
         </div>
         <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight leading-tight text-balance mb-4">
           {story.title}

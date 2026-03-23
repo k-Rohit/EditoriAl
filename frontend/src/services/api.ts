@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 export interface ArticleMeta {
   title: string;
@@ -111,3 +111,20 @@ export async function chatWithStory(
   }
   return res.json();
 }
+
+export interface LocalNewsResponse {
+  city: string;
+  etCity: string;
+  stories: TrendingStory[];
+}
+
+export async function fetchLocalNews(city: string, state: string = ""): Promise<LocalNewsResponse> {
+  const res = await fetch(`${API_BASE}/api/local-news`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ city, state }),
+  });
+  if (!res.ok) return { city, etCity: "", stories: [] };
+  return res.json();
+}
+

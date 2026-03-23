@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Sparkles, Flame, BarChart3, Zap, Loader2, Home } from 'lucide-react';
-import { fetchTrending, type TrendingStory } from '@/services/api';
+import { Search, Flame, BarChart3, Zap, Loader2, Home, MapPin } from 'lucide-react';
+import { fetchTrending, fetchLocalNews, type TrendingStory } from '@/services/api';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface AppSidebarProps {
   onSelectStory: (title: string) => void;
@@ -15,6 +16,11 @@ interface AppSidebarProps {
 const AppSidebar = ({ onSelectStory, activeMode, onModeChange, searchQuery, onSearch, onSearchSubmit, onGoHome }: AppSidebarProps) => {
   const [trending, setTrending] = useState<TrendingStory[]>([]);
   const [loadingTrending, setLoadingTrending] = useState(true);
+  const [feedTab, setFeedTab] = useState<'trending' | 'local'>('trending');
+  const [localStories, setLocalStories] = useState<TrendingStory[]>([]);
+  const [loadingLocal, setLoadingLocal] = useState(false);
+  const [localCity, setLocalCity] = useState('');
+  const { location, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
 
   useEffect(() => {
     fetchTrending()
@@ -22,6 +28,19 @@ const AppSidebar = ({ onSelectStory, activeMode, onModeChange, searchQuery, onSe
       .catch(() => {})
       .finally(() => setLoadingTrending(false));
   }, []);
+
+  // Fetch local news when location is available
+  useEffect(() => {
+    if (!location?.city) return;
+    setLoadingLocal(true);
+    fetchLocalNews(location.city, location.state)
+      .then((data) => {
+        setLocalStories(data.stories);
+        setLocalCity(data.city);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingLocal(false));
+  }, [location?.city]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +57,7 @@ const AppSidebar = ({ onSelectStory, activeMode, onModeChange, searchQuery, onSe
       <div className="px-5 py-5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <Zap className="w-3.5 h-3.5 text-primary" />
           </div>
           <span className="text-sm font-semibold tracking-tight text-foreground">ET Chronicle</span>
         </div>
@@ -97,37 +116,114 @@ const AppSidebar = ({ onSelectStory, activeMode, onModeChange, searchQuery, onSe
         </div>
       </div>
 
-      {/* Trending */}
+      {/* Feed Tabs: Trending / Local */}
       <div className="px-5 pb-2">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Flame className="w-3.5 h-3.5 text-sentiment-caution" />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Trending on ET</span>
+        <div className="flex items-center gap-3 mb-3">
+          <button
+            onClick={() => setFeedTab('trending')}
+            className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+              feedTab === 'trending' ? 'text-sentiment-caution' : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            Trending
+          </button>
+          <button
+            onClick={() => {
+              setFeedTab('local');
+              if (!location && !geoLoading) requestLocation();
+            }}
+            className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+              feedTab === 'local' ? 'text-primary' : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            Local
+          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 pb-4">
-        {loadingTrending ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
-          </div>
+        {feedTab === 'trending' ? (
+          // Trending feed
+          loadingTrending ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {trending.map((story) => (
+                <button
+                  key={story.id}
+                  onClick={() => onSelectStory(story.title)}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 group active:scale-[0.98] flex items-center justify-between gap-2"
+                >
+                  <span className="truncate">{story.title}</span>
+                  <span className="text-[10px] text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors">
+                    {story.tag}
+                  </span>
+                </button>
+              ))}
+              {trending.length === 0 && (
+                <p className="text-xs text-muted-foreground/40 text-center py-4">No trending stories available</p>
+              )}
+            </div>
+          )
         ) : (
-          <div className="space-y-0.5">
-            {trending.map((story) => (
+          // Local feed
+          !location && !geoLoading && !geoError ? (
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+              <MapPin className="w-6 h-6 text-primary/40 mb-3" />
+              <p className="text-xs text-muted-foreground mb-3">Allow location access to see news from your city</p>
               <button
-                key={story.id}
-                onClick={() => onSelectStory(story.title)}
-                className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 group active:scale-[0.98] flex items-center justify-between gap-2"
+                onClick={requestLocation}
+                className="text-xs px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               >
-                <span className="truncate">{story.title}</span>
-                <span className="text-[10px] text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors">
-                  {story.tag}
-                </span>
+                Enable Location
               </button>
-            ))}
-            {trending.length === 0 && (
-              <p className="text-xs text-muted-foreground/40 text-center py-4">No trending stories available</p>
-            )}
-          </div>
+            </div>
+          ) : geoLoading || loadingLocal ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin mb-2" />
+              <p className="text-[10px] text-muted-foreground/50">
+                {geoLoading ? 'Getting location…' : `Loading ${localCity || 'local'} news…`}
+              </p>
+            </div>
+          ) : geoError ? (
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+              <p className="text-xs text-muted-foreground/60 mb-3">{geoError}</p>
+              <button
+                onClick={requestLocation}
+                className="text-xs px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {localCity && (
+                <div className="flex items-center gap-1.5 px-3 py-2 mb-1">
+                  <MapPin className="w-3 h-3 text-primary/60" />
+                  <span className="text-[10px] text-primary/60 font-medium uppercase tracking-wider">{localCity}</span>
+                </div>
+              )}
+              {localStories.map((story) => (
+                <button
+                  key={story.id}
+                  onClick={() => onSelectStory(story.title)}
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-all duration-200 group active:scale-[0.98] flex items-center justify-between gap-2"
+                >
+                  <span className="truncate">{story.title}</span>
+                  <span className="text-[10px] text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors">
+                    {story.tag}
+                  </span>
+                </button>
+              ))}
+              {localStories.length === 0 && (
+                <p className="text-xs text-muted-foreground/40 text-center py-4">No local stories found</p>
+              )}
+            </div>
+          )
         )}
       </div>
 

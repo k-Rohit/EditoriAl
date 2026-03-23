@@ -1,4 +1,7 @@
+import { useMemo } from 'react';
+import { Volume2, Pause, Loader2 } from 'lucide-react';
 import type { StoryData } from '@/services/api';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 
 const sentimentBarColor = (type: string) =>
   type === 'positive' ? 'bg-sentiment-positive' :
@@ -7,9 +10,10 @@ const sentimentBarColor = (type: string) =>
 
 interface DeepDivePanelProps {
   story: StoryData;
+  deepgramApiKey?: string;
 }
 
-const DeepDivePanel = ({ story }: DeepDivePanelProps) => {
+const DeepDivePanel = ({ story, deepgramApiKey }: DeepDivePanelProps) => {
   const dd = story.deepDive;
 
   if (!dd) {
@@ -22,11 +26,35 @@ const DeepDivePanel = ({ story }: DeepDivePanelProps) => {
 
   const { sentimentBreakdown, keyQuotes, tldrCards } = dd;
 
+  // Build TTS text from deep dive content
+  const ttsText = useMemo(() => {
+    const parts = [story.title, sentimentBreakdown.summary];
+    tldrCards.forEach(c => parts.push(`${c.title}: ${c.text}`));
+    keyQuotes.forEach(q => parts.push(`${q.speaker} said: ${q.quote}`));
+    return parts.join('. ');
+  }, [story.title, sentimentBreakdown, tldrCards, keyQuotes]);
+
+  const { isPlaying, isLoading: ttsLoading, play, pause } = useTextToSpeech({
+    text: ttsText,
+    deepgramApiKey,
+  });
+
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-fade-up">
       {/* Header */}
       <div>
-        <p className="text-xs uppercase tracking-[0.15em] text-primary/70 font-medium mb-3">Deep Dive</p>
+        <div className="flex items-center gap-3 mb-3">
+          <p className="text-xs uppercase tracking-[0.15em] text-primary/70 font-medium">Deep Dive</p>
+          <button
+            onClick={isPlaying ? pause : play}
+            disabled={ttsLoading}
+            className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full border border-primary/20 text-primary/80 hover:bg-primary/5 hover:border-primary/40 transition-all duration-200 active:scale-[0.96] disabled:opacity-40"
+            title={isPlaying ? 'Pause audio' : 'Listen to deep dive'}
+          >
+            {ttsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : isPlaying ? <Pause className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+            {ttsLoading ? 'Loading…' : isPlaying ? 'Pause' : 'Listen'}
+          </button>
+        </div>
         <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight leading-tight text-balance mb-2">
           {story.title}
         </h1>
