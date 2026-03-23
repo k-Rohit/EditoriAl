@@ -15,6 +15,7 @@ const Index = () => {
   const [articleMeta, setArticleMeta] = useState<ArticleMeta[]>([]);
   const apiDone = useRef(false);
   const loadingAnimDone = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const tryTransitionToDashboard = useCallback(() => {
     if (apiDone.current && loadingAnimDone.current) {
@@ -22,13 +23,21 @@ const Index = () => {
     }
   }, []);
 
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setState('landing');
+  }, []);
+
   const handleAnalyze = useCallback(async (query: string) => {
     setState('loading');
     apiDone.current = false;
     loadingAnimDone.current = false;
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
 
     try {
-      const data = await analyzeStory(query);
+      const data = await analyzeStory(query, abortRef.current.signal);
       setSessionId(data.session_id);
       setStoryData(data.story);
       setArticleCount(data.articleCount || 0);
@@ -36,6 +45,7 @@ const Index = () => {
       apiDone.current = true;
       tryTransitionToDashboard();
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       toast.error(err.message || 'Failed to analyze story');
       setState('landing');
     }
@@ -47,7 +57,7 @@ const Index = () => {
   }, [tryTransitionToDashboard]);
 
   if (state === 'loading') {
-    return <LoadingScreen onComplete={handleLoadingComplete} />;
+    return <LoadingScreen onComplete={handleLoadingComplete} onCancel={handleCancel} />;
   }
 
   if (state === 'dashboard' && storyData) {

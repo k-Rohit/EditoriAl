@@ -35,23 +35,17 @@ def _extract_tag_from_url(url: str) -> str:
     return "News"
 
 
-def _find_image(element) -> str:
-    """Find image URL from an element or its parent."""
-    # Check inside the link itself
-    img = element.find("img")
-    if img:
-        src = img.get("src", "") or img.get("data-src", "") or img.get("data-original", "")
-        if src and "etimg.com" in src:
-            # Upgrade to higher resolution
-            return src.replace("width-200,height-150", "width-480,height-360")
-    # Check parent container
-    parent = element.parent
-    if parent:
-        img = parent.find("img")
-        if img:
-            src = img.get("src", "") or img.get("data-src", "") or img.get("data-original", "")
-            if src and "etimg.com" in src:
-                return src.replace("width-200,height-150", "width-480,height-360")
+async def _fetch_og_image(client: httpx.AsyncClient, url: str) -> str:
+    """Fetch the Open Graph image from an article page."""
+    try:
+        resp = await client.get(url, timeout=8.0)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        og = soup.find("meta", property="og:image")
+        if og and og.get("content"):
+            return og["content"]
+    except Exception:
+        pass
     return ""
 
 
@@ -84,14 +78,12 @@ async def fetch_trending_from_et() -> list[dict]:
                     href = ET_BASE + href
 
                 tag = _extract_tag_from_url(href)
-                image = _find_image(link)
-
                 stories.append({
                     "id": str(len(stories) + 1),
                     "title": title,
                     "tag": tag,
                     "url": href,
-                    "image": image,
+                    "image": "",
                 })
 
                 if len(stories) >= 15:
@@ -140,7 +132,18 @@ async def fetch_trending_from_et() -> list[dict]:
             except Exception as e:
                 print(f"Failed to fetch ET latest news: {e}")
 
-    return stories[:12]
+    # Fetch OG images from each article page (reliable per-article images)
+    import asyncio
+    final = stories[:12]
+    if final:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers=HEADERS) as img_client:
+            tasks = [_fetch_og_image(img_client, s["url"]) for s in final]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for s, img in zip(final, results):
+                if isinstance(img, str) and img:
+                    s["image"] = img
+
+    return final
 
 
 # Cache

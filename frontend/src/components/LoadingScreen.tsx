@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
 interface LoadingScreenProps {
   onComplete: () => void;
+  onCancel?: () => void;
 }
 
 const steps = [
@@ -12,7 +13,7 @@ const steps = [
   'Generating interactive briefing…',
 ];
 
-const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
+const LoadingScreen = ({ onComplete, onCancel }: LoadingScreenProps) => {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
@@ -72,6 +73,17 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
         </div>
 
         <p className="text-xs text-muted-foreground/40 mt-4">AI synthesized from ET journalism</p>
+
+        {/* Cancel button */}
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="mt-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-foreground px-4 py-2 rounded-full border border-border/50 hover:border-border transition-all duration-200 active:scale-[0.96]"
+          >
+            <X className="w-3 h-3" />
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   );
