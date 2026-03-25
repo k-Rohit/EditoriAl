@@ -8,10 +8,6 @@ const sentimentColor = (s: string) =>
   s === 'caution' ? 'bg-sentiment-caution/10 text-sentiment-caution border-sentiment-caution/20' :
   'bg-sentiment-negative/10 text-sentiment-negative border-sentiment-negative/20';
 
-const stanceDot = (s: string) =>
-  s === 'positive' ? 'bg-sentiment-positive' :
-  s === 'caution' ? 'bg-sentiment-caution' :
-  'bg-sentiment-negative';
 
 interface BriefingPanelProps {
   story: StoryData;
@@ -142,27 +138,6 @@ const BriefingPanel = ({ story, articleCount, articleMeta, onAskQuestion, deepgr
               </div>
               <h3 className="text-sm font-semibold text-foreground mb-2">{card.audience}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{card.text}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Key Players */}
-      <div>
-        <h2 className="text-xs uppercase tracking-[0.15em] text-muted-foreground font-medium mb-4 flex items-center gap-2">
-          <span>👥</span> Key Players
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          {story.keyPlayers.map((player) => (
-            <div key={player.name} className="glass-panel rounded-xl px-4 py-3 flex items-center gap-3 group hover:bg-glass-hover transition-colors duration-200">
-              <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground">
-                {player.initials}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">{player.name}</p>
-                <p className="text-xs text-muted-foreground">{player.role}</p>
-              </div>
-              <div className={`w-2 h-2 rounded-full ${stanceDot(player.stance)} ml-1`} />
             </div>
           ))}
         </div>

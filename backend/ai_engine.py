@@ -13,6 +13,31 @@ client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 MODEL = "gpt-4o-mini"
 
 
+def _build_chunk_context(chunks: list[dict]) -> str:
+    """Build a context string from retrieved RAG chunks."""
+    parts = []
+    for i, c in enumerate(chunks, 1):
+        parts.append(
+            f"[Chunk {i}] From: \"{c.get('article_title', 'Untitled')}\" ({c.get('source', 'Economic Times')})\n"
+            f"URL: {c.get('article_url', '')}\n"
+            f"Content: {c['text']}\n"
+        )
+    return "\n---\n".join(parts)
+
+
+def _extract_sources_from_chunks(chunks: list[dict]) -> tuple[list[str], list[str]]:
+    """Extract deduplicated source names and URLs from chunks."""
+    source_names = list({c.get("source", "Economic Times") for c in chunks if c.get("source")})
+    seen_urls = set()
+    article_urls = []
+    for c in chunks:
+        url = c.get("article_url", "")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            article_urls.append(url)
+    return source_names, article_urls[:6]
+
+
 def _build_article_context(articles: list[dict]) -> str:
     """Build a context string from extracted articles."""
     parts = []
@@ -54,20 +79,17 @@ Return a JSON object with EXACTLY this structure (no markdown, no code fences, j
   "keyFacts": ["fact1", "fact2", "fact3", "fact4", "fact5", "fact6"],
   "impactCards": [
     {{
-      "audience": "Name of affected group 1",
-      "icon": "relevant emoji",
+      "audience": "Name of affected group 1"
       "sentiment": "positive|caution|negative",
       "text": "2-3 sentence impact description for this audience"
     }},
     {{
-      "audience": "Name of affected group 2",
-      "icon": "relevant emoji",
+      "audience": "Name of affected group 2"
       "sentiment": "positive|caution|negative",
       "text": "2-3 sentence impact description"
     }},
     {{
-      "audience": "Name of affected group 3",
-      "icon": "relevant emoji",
+      "audience": "Name of affected group 3"
       "sentiment": "positive|caution|negative",
       "text": "2-3 sentence impact description"
     }}
@@ -182,6 +204,106 @@ Instructions:
 - Use bullet points only if listing 3+ items
 - Include specific data/names/dates when available
 - If articles don't cover this, say so briefly
+- Do NOT add a "still developing" note unless asked
+
+Return a JSON object (no markdown fences):
+{{
+  "content": "Your concise answer here",
+  "sources": ["Economic Times"]
+}}
+"""
+
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4,
+        max_tokens=500,
+    )
+
+    text = response.choices[0].message.content.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+
+    return json.loads(text)
+
+
+async def generate_briefing_rag(query: str, chunks: list[dict]) -> dict:
+    """
+    Generate a full briefing from RAG-retrieved chunks instead of full articles.
+    Same output structure as generate_briefing.
+    """
+    context = _build_chunk_context(chunks)
+    source_names, article_urls = _extract_sources_from_chunks(chunks)
+
+    prompt = f"""Analyze these Economic Times excerpts about "{query}" and return a JSON briefing.
+
+EXCERPTS:
+{context}
+
+Return JSON with these fields:
+- title: compelling analytical title
+- topic: "{query}"
+- title: compelling analytical title
+- topic: "{query}"
+- summary: 2-3 sentence executive summary
+- keyFacts: 6 concise facts (1 sentence each)
+- impactCards: 3 {{audience, sentiment, text}} (sentiment: "positive"|"caution"|"negative", text: 1 sentence)
+- suggestedQuestions: 5 questions
+- timeline: 4 {{id, date, title, summary, sentiment}} (summary: 1 sentence)
+- sources: {json.dumps(source_names)}
+- sourceUrls: {json.dumps(article_urls)}
+- whatToWatch: 3 short predictions
+- deepDive: {{sentimentBreakdown: {{positive, neutral, negative (sum=100), summary}}, keyQuotes: 3 {{quote, speaker, context}}, tldrCards: 3 {{emoji, title, text}}}}
+
+All data must be grounded in the provided excerpts."""
+
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=2000,
+        response_format={"type": "json_object"},
+    )
+
+    result = json.loads(response.choices[0].message.content)
+    result["id"] = "story_1"
+    return result
+
+
+async def chat_answer_rag(question: str, story_context: dict, chunks: list[dict], chat_history: list[dict] = None) -> dict:
+    """
+    Answer a user question using RAG-retrieved chunks relevant to the specific question.
+    """
+    context = _build_chunk_context(chunks)
+    story_summary = story_context.get("summary", "")
+    story_title = story_context.get("title", "")
+
+    history_text = ""
+    if chat_history:
+        for msg in chat_history[-6:]:
+            role = "User" if msg.get("role") == "user" else "AI"
+            history_text += f"{role}: {msg.get('content', '')}\n"
+
+    prompt = f"""You are the AI assistant for ET Chronicle, answering questions about: "{story_title}"
+
+Story Summary: {story_summary}
+
+RELEVANT EXCERPTS FROM ECONOMIC TIMES (retrieved via semantic search for this question):
+{context}
+
+{f"CONVERSATION HISTORY:{chr(10)}{history_text}" if history_text else ""}
+
+USER QUESTION: {question}
+
+Instructions:
+- Answer based ONLY on the provided ET article excerpts
+- Be CONCISE: 3-5 sentences max. No long paragraphs.
+- Use bullet points only if listing 3+ items
+- Include specific data/names/dates when available
+- If excerpts don't cover this, say so briefly
 - Do NOT add a "still developing" note unless asked
 
 Return a JSON object (no markdown fences):

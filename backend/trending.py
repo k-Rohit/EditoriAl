@@ -241,11 +241,10 @@ async def fetch_local_news(city_slug: str) -> list[dict]:
     """Scrape ET city edition page for local news, filtered for relevance."""
     candidates = []
     seen_titles = set()
-    city_url = f"{ET_BASE}/news/city/news/{city_slug}"
 
     async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, headers=HEADERS) as client:
-        # Try city news pages — collect more candidates than needed for filtering
-        for url in [city_url, f"{ET_BASE}/news/{city_slug}"]:
+        # Try city news pages — /news/{city}-news works for most, /topic/{city} is fallback
+        for url in [f"{ET_BASE}/news/{city_slug}-news", f"{ET_BASE}/topic/{city_slug}"]:
             try:
                 resp = await client.get(url)
                 if resp.status_code != 200:

@@ -39,7 +39,7 @@ export interface StoryData {
   summary: string;
   keyFacts: string[];
   impactCards: { audience: string; icon: string; sentiment: "positive" | "caution" | "negative"; text: string }[];
-  keyPlayers: { name: string; initials: string; role: string; stance: "positive" | "caution" | "negative" }[];
+  keyPlayers?: { name: string; initials: string; role: string; stance: "positive" | "caution" | "negative" }[];
   suggestedQuestions: string[];
   timeline: { id: string; date: string; title: string; summary: string; sentiment: "positive" | "caution" | "negative" }[];
   sources: string[];
@@ -126,5 +126,79 @@ export async function fetchLocalNews(city: string, state: string = ""): Promise<
   });
   if (!res.ok) return { city, etCity: "", stories: [] };
   return res.json();
+}
+
+// ── SSE Streaming API ───────────────────────────────────────────
+
+export interface StreamProgress {
+  step: "scraping" | "embedding" | "generating";
+  message: string;
+}
+
+/**
+ * Stream analysis via SSE. Calls onProgress for each step,
+ * onResult with the final data, onError on failure.
+ * Returns an AbortController for cancellation.
+ */
+export function analyzeStoryStream(
+  query: string,
+  onProgress: (progress: StreamProgress) => void,
+  onResult: (data: AnalyzeResponse) => void,
+  onError: (error: string) => void,
+): AbortController {
+  const controller = new AbortController();
+  const url = `${API_BASE}/api/analyze-stream?query=${encodeURIComponent(query)}`;
+
+  fetch(url, { signal: controller.signal })
+    .then(async (response) => {
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: "Analysis failed" }));
+        onError(err.detail || "Analysis failed");
+        return;
+      }
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        let currentEvent = "";
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            currentEvent = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            const data = line.slice(5).trim();
+            if (!data) continue;
+            try {
+              const parsed = JSON.parse(data);
+              if (currentEvent === "progress") {
+                onProgress(parsed as StreamProgress);
+              } else if (currentEvent === "result") {
+                onResult(parsed as AnalyzeResponse);
+              } else if (currentEvent === "error") {
+                onError(parsed.message || "Analysis failed");
+              }
+            } catch {
+              // skip malformed JSON
+            }
+            currentEvent = "";
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") {
+        onError(err.message || "Stream connection failed");
+      }
+    });
+
+  return controller;
 }
 

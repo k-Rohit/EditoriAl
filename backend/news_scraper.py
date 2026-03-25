@@ -82,7 +82,7 @@ def _basic_simplify(query: str) -> str:
 def _relevance_score(keywords: list[str], title: str, text: str = "") -> float:
     """Score how relevant an article is to the search keywords (0-1)."""
     title_lower = title.lower()
-    text_lower = text.lower()[:3000] if text else ""
+    text_lower = text.lower() if text else ""
     combined = title_lower + " " + text_lower
 
     if not keywords:
@@ -243,59 +243,60 @@ async def search_and_extract(query: str, max_articles: int = 8) -> list[dict]:
     search_keywords = await _ai_extract_keywords(query)
     print(f"AI search keywords for '{query[:50]}': {search_keywords}")
 
-    # Step 2: Search ET with each keyword variant, collect unique results
+    # Step 2: Search ET with all keyword variants in parallel
     all_results = []
     seen_urls = set()
-    for kw in search_keywords:
-        results = await fetch_et_search(kw, num_results=10)
-        for r in results:
-            if r["link"] not in seen_urls:
-                seen_urls.add(r["link"])
-                all_results.append(r)
-        if len(all_results) >= 20:
-            break
+    search_tasks = [fetch_et_search(kw, num_results=10) for kw in search_keywords]
+    all_search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+    for results in all_search_results:
+        if isinstance(results, list):
+            for r in results:
+                if r["link"] not in seen_urls:
+                    seen_urls.add(r["link"])
+                    all_results.append(r)
 
     print(f"Total search results: {len(all_results)}")
 
     if not all_results:
         return []
 
-    # Step 3: Score and filter by relevance BEFORE fetching full content
-    for r in all_results:
-        r["_score"] = _relevance_score(search_keywords, r["title"])
+    # Step 3: Semantic ranking — use embedding model to rank by similarity to original query
+    from rag_engine import semantic_rank
+    ranked = await asyncio.to_thread(semantic_rank, query, all_results, "title", max_articles + 4)
 
-    # Sort by relevance, take top candidates
-    all_results.sort(key=lambda r: r["_score"], reverse=True)
+    # Log top results with semantic + recency scores
+    for r in ranked[:5]:
+        recency = r.get('_recency_boost', 0)
+        raw = r.get('_sem_raw', r['_semantic_score'])
+        print(f"  [SEM {raw:.3f} +REC {recency:.3f} = {r['_semantic_score']:.3f}] {r['title'][:55]}")
 
-    # Only fetch articles with meaningful relevance (at least 1 keyword match)
-    relevant = [r for r in all_results if r["_score"] >= 0.15]
-
-    # Log what we're keeping/dropping
-    for r in all_results[:5]:
-        status = "KEEP" if r["_score"] >= 0.15 else "DROP"
-        print(f"  [{status} {r['_score']:.2f}] {r['title'][:60]}")
-
-    if not relevant:
-        # If nothing passes, take the best we have
-        relevant = all_results[:max_articles]
-
-    # Step 4: Extract content from top relevant articles
-    to_fetch = relevant[:max_articles + 2]
+    # Step 4: Drop articles with very low relevance compared to top result
+    if ranked:
+        top_score = ranked[0]["_semantic_score"]
+        # Keep articles scoring at least 50% of the top result
+        relevant = [r for r in ranked if r["_semantic_score"] >= top_score * 0.5]
+        if len(relevant) < 3:
+            relevant = ranked[:3]  # always keep at least 3
+        to_fetch = relevant[:max_articles + 2]
+    else:
+        to_fetch = ranked[:max_articles + 2]
     tasks = [extract_article_content(r["link"]) for r in to_fetch]
     results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    from rag_engine import _recency_boost
 
     articles = []
     for i, result in enumerate(results):
         if isinstance(result, dict) and result.get("text") and len(result["text"]) > 50:
             result["rss_title"] = to_fetch[i]["title"]
             result["published"] = to_fetch[i].get("published", "") or result.get("publish_date", "")
-            # Re-score with full text for final ranking
-            result["_relevance"] = _relevance_score(
-                search_keywords, result.get("title", ""), result.get("text", "")
-            )
+            # Combine semantic score with recency boost (now we have publish dates)
+            sem_score = to_fetch[i].get("_semantic_score", 0)
+            recency = _recency_boost(result["published"])
+            result["_relevance"] = sem_score + recency
             articles.append(result)
 
-    # Final sort by relevance
+    # Final sort by combined relevance + recency
     articles.sort(key=lambda a: a.get("_relevance", 0), reverse=True)
 
     print(f"Final articles: {len(articles[:max_articles])}")

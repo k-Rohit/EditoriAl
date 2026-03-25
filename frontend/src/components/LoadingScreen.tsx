@@ -1,36 +1,39 @@
 import { useState, useEffect } from 'react';
 import { Zap, X } from 'lucide-react';
+import type { StreamProgress } from '@/services/api';
 
 interface LoadingScreenProps {
   onComplete: () => void;
   onCancel?: () => void;
+  progress?: StreamProgress;
 }
 
-const steps = [
-  'Scanning related articles…',
-  'Understanding context & entities…',
-  'Building story intelligence…',
-  'Generating interactive briefing…',
+const STEP_MAP: Record<string, number> = {
+  scraping: 0,
+  embedding: 1,
+  generating: 2,
+};
+
+const STEP_LABELS = [
+  'Searching Economic Times…',
+  'Analyzing & embedding articles…',
+  'Generating intelligence briefing…',
 ];
 
-const LoadingScreen = ({ onComplete, onCancel }: LoadingScreenProps) => {
+const LoadingScreen = ({ onComplete, onCancel, progress }: LoadingScreenProps) => {
   const [currentStep, setCurrentStep] = useState(0);
 
+  // Drive steps purely from SSE progress events
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev >= steps.length - 1) {
-          clearInterval(interval);
-          setTimeout(onComplete, 800);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [onComplete]);
+    if (progress?.step && STEP_MAP[progress.step] !== undefined) {
+      const sseStep = STEP_MAP[progress.step];
+      setCurrentStep((prev) => Math.max(prev, sseStep));
+    }
+  }, [progress]);
 
-  const progress = ((currentStep + 1) / steps.length) * 100;
+  // Progress bar: fill based on step, but never 100% until result arrives via parent
+  const progressPercent = ((currentStep + 1) / (STEP_LABELS.length + 1)) * 100;
+  const displayMessage = progress?.message || STEP_LABELS[currentStep] || '';
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
@@ -47,7 +50,7 @@ const LoadingScreen = ({ onComplete, onCancel }: LoadingScreenProps) => {
 
         {/* Steps */}
         <div className="space-y-3 mb-10">
-          {steps.map((step, i) => (
+          {STEP_LABELS.map((step, i) => (
             <p
               key={step}
               className={`text-sm transition-all duration-500 ${
@@ -58,7 +61,7 @@ const LoadingScreen = ({ onComplete, onCancel }: LoadingScreenProps) => {
                   : 'text-muted-foreground/20'
               }`}
             >
-              {i === currentStep && <span className="cursor-blink">{step}</span>}
+              {i === currentStep && <span className="cursor-blink">{displayMessage}</span>}
               {i !== currentStep && step}
             </p>
           ))}
@@ -68,7 +71,7 @@ const LoadingScreen = ({ onComplete, onCancel }: LoadingScreenProps) => {
         <div className="w-full max-w-xs mx-auto h-1 bg-secondary rounded-full overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${progress}%` }}
+            style={{ width: `${progressPercent}%` }}
           />
         </div>
 
