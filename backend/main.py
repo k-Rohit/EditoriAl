@@ -5,7 +5,7 @@ FastAPI backend for ET Chronicle.
 import json
 import os
 import uuid
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -16,6 +16,7 @@ load_dotenv()
 from news_scraper import search_and_extract
 from ai_engine import generate_briefing_rag, chat_answer_rag
 from trending import get_trending_stories, get_local_news
+from auth import get_current_user
 
 
 app = FastAPI(title="ET Chronicle API")
@@ -68,7 +69,7 @@ async def health():
 
 
 @app.get("/api/analyze-stream")
-async def analyze_stream(query: str, request: Request):
+async def analyze_stream(query: str, request: Request, user: dict = Depends(get_current_user)):
     """
     SSE endpoint: streams progress events during analysis,
     then sends the final result as a single JSON event.
@@ -129,7 +130,7 @@ async def analyze_stream(query: str, request: Request):
 
 
 @app.post("/api/analyze")
-async def analyze(req: AnalyzeRequest):
+async def analyze(req: AnalyzeRequest, user: dict = Depends(get_current_user)):
     """
     Non-streaming fallback: takes a topic/query, scrapes ET articles,
     runs RAG pipeline, generates a full briefing via OpenAI.
@@ -177,7 +178,7 @@ async def analyze(req: AnalyzeRequest):
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, user: dict = Depends(get_current_user)):
     """
     Q&A endpoint: retrieves chunks relevant to the specific question,
     then answers grounded in those chunks.

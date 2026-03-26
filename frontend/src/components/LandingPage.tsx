@@ -1,17 +1,53 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, ArrowRight, Brain, Zap, Flame, Loader2, Mic, MapPin } from 'lucide-react';
+import { Search, ArrowRight, Brain, Zap, Flame, Loader2, Mic, MapPin, LogOut, UserCircle } from 'lucide-react';
 import { fetchTrending, fetchLocalNews, type TrendingStory } from '@/services/api';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useAuth } from '@/contexts/AuthContext';
+import AuthModal from './AuthModal';
 
 interface LandingPageProps {
   onAnalyze: (query: string) => void;
 }
 
+function getGreeting(name: string): string {
+  const hour = new Date().getHours();
+  const firstName = name.split(' ')[0];
+  if (hour < 5) return `Burning the midnight oil, ${firstName}?`;
+  if (hour < 12) return `Good morning, ${firstName}`;
+  if (hour < 17) return `Good afternoon, ${firstName}`;
+  if (hour < 21) return `Good evening, ${firstName}`;
+  return `Hello, night owl ${firstName}`;
+}
+
 const LandingPage = ({ onAnalyze }: LandingPageProps) => {
+  const { user, profile, signOut } = useAuth();
+  const [authModal, setAuthModal] = useState<'login' | 'signup' | null>(null);
+  const [pendingQuery, setPendingQuery] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [trending, setTrending] = useState<TrendingStory[]>([]);
   const [loadingTrending, setLoadingTrending] = useState(true);
   const [visible, setVisible] = useState(false);
+
+  // Gate analyze behind auth
+  const tryAnalyze = (q: string) => {
+    if (user) {
+      onAnalyze(q);
+    } else {
+      setPendingQuery(q);
+      setAuthModal('login');
+    }
+  };
+
+  // After login, close modal and fire pending query
+  useEffect(() => {
+    if (user) {
+      setAuthModal(null);
+      if (pendingQuery) {
+        onAnalyze(pendingQuery);
+        setPendingQuery(null);
+      }
+    }
+  }, [user]);
   const trendingRef = useRef<HTMLDivElement>(null);
   const [trendingVisible, setTrendingVisible] = useState(false);
   const localRef = useRef<HTMLDivElement>(null);
@@ -69,7 +105,7 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) onAnalyze(query.trim());
+    if (query.trim()) tryAnalyze(query.trim());
   };
 
   return (
@@ -88,7 +124,38 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
           </div>
           <span className="text-base sm:text-lg font-semibold tracking-tight text-foreground">ET Chronicle</span>
         </div>
-        <span className="text-[10px] sm:text-xs text-muted-foreground tracking-wide uppercase hidden sm:block">AI-Powered Intelligence</span>
+        <div className="flex items-center gap-3">
+          {user ? (
+            <>
+              <span className="text-xs text-muted-foreground hidden sm:block">
+                <UserCircle className="w-4 h-4 inline mr-1" />
+                {profile?.full_name || user.email}
+              </span>
+              <button
+                onClick={() => signOut()}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg border border-border hover:border-border/80 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setAuthModal('login')}
+                className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg border border-border hover:border-border/80 transition-all"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => setAuthModal('signup')}
+                className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg font-medium hover:bg-primary/90 transition-all"
+              >
+                Sign Up
+              </button>
+            </>
+          )}
+        </div>
       </nav>
 
       {/* Hero */}
@@ -97,15 +164,28 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
           From breaking news to full narrative
         </p>
 
-        <h1 className={`text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1] sm:leading-[0.95] text-foreground text-balance mb-4 sm:mb-6 transition-all duration-700 delay-100 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          Stop reading news.{' '}
-          <span className="gradient-text">Start interacting</span> with it.
-        </h1>
-
-        <p className={`text-sm sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-12 leading-relaxed transition-all duration-700 delay-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          AI-powered intelligence built on Economic Times journalism.
-          Ask the story — don't read 10 articles.
-        </p>
+        {user && profile?.full_name ? (
+          <>
+            <h1 className={`text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1] sm:leading-[0.95] text-foreground text-balance mb-4 sm:mb-6 transition-all duration-700 delay-100 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              {getGreeting(profile.full_name)}{' '}
+              <span className="gradient-text">What would you like to know?</span>
+            </h1>
+            <p className={`text-sm sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-12 leading-relaxed transition-all duration-700 delay-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              Your AI-powered news intelligence is ready. Ask any topic.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className={`text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1] sm:leading-[0.95] text-foreground text-balance mb-4 sm:mb-6 transition-all duration-700 delay-100 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              Stop reading news.{' '}
+              <span className="gradient-text">Start interacting</span> with it.
+            </h1>
+            <p className={`text-sm sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-12 leading-relaxed transition-all duration-700 delay-200 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              AI-powered intelligence built on Economic Times journalism.
+              Ask the story — don't read 10 articles.
+            </p>
+          </>
+        )}
 
         {/* Search Input */}
         <form onSubmit={handleSubmit}
@@ -137,7 +217,7 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
           {quickTopics.map((t) => (
             <button
               key={t}
-              onClick={() => onAnalyze(t)}
+              onClick={() => tryAnalyze(t)}
               className="text-[11px] sm:text-xs px-3 sm:px-4 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all duration-200 active:scale-[0.96] text-left leading-snug"
             >
               {t}
@@ -184,7 +264,7 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
             {cardStories.map((story, i) => (
               <button
                 key={story.id}
-                onClick={() => onAnalyze(story.title)}
+                onClick={() => tryAnalyze(story.title)}
                 className={`text-left glass-panel-hover rounded-2xl overflow-hidden group active:scale-[0.98] transition-all duration-500 ${
                   trendingVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                 }`}
@@ -257,7 +337,7 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
             {localStories.slice(0, 6).map((story, i) => (
               <button
                 key={story.id}
-                onClick={() => onAnalyze(story.title)}
+                onClick={() => tryAnalyze(story.title)}
                 className={`text-left glass-panel-hover rounded-2xl overflow-hidden group active:scale-[0.98] transition-all duration-500 ${
                   localVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                 }`}
@@ -310,6 +390,17 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
           <p className="text-[10px] sm:text-xs text-muted-foreground/50">From breaking news to full narrative</p>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      {authModal && (
+        <AuthModal
+          initialView={authModal}
+          onClose={() => {
+            setAuthModal(null);
+            if (!user) setPendingQuery(null);
+          }}
+        />
+      )}
     </div>
   );
 };

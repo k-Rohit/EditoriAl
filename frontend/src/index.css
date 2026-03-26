@@ -126,19 +126,12 @@
   filter: blur(0);
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Hide scrollbars but keep scroll functionality */
+* {
+  scrollbar-width: none; /* Firefox */
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: hsl(220 14% 22%);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(220 14% 30%);
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
 }
 
 /* Typing animation */

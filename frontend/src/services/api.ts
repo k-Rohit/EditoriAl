@@ -1,4 +1,17 @@
+import { supabase } from "@/lib/supabase";
+
 const API_BASE = import.meta.env.VITE_API_BASE || "";
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    };
+  }
+  return { "Content-Type": "application/json" };
+}
 
 export interface ArticleMeta {
   title: string;
@@ -63,9 +76,10 @@ export interface ChatResponse {
 }
 
 export async function analyzeStory(query: string, signal?: AbortSignal): Promise<AnalyzeResponse> {
+  const headers = await authHeaders();
   const res = await fetch(`${API_BASE}/api/analyze`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ query }),
     signal,
   });
@@ -96,9 +110,10 @@ export async function chatWithStory(
   question: string,
   chatHistory: { role: string; content: string }[] = []
 ): Promise<ChatResponse> {
+  const headers = await authHeaders();
   const res = await fetch(`${API_BASE}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       session_id: sessionId,
       question,
@@ -149,55 +164,57 @@ export function analyzeStoryStream(
   const controller = new AbortController();
   const url = `${API_BASE}/api/analyze-stream?query=${encodeURIComponent(query)}`;
 
-  fetch(url, { signal: controller.signal })
-    .then(async (response) => {
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ detail: "Analysis failed" }));
-        onError(err.detail || "Analysis failed");
-        return;
-      }
+  authHeaders().then((headers) => {
+    fetch(url, { signal: controller.signal, headers })
+      .then(async (response) => {
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ detail: "Analysis failed" }));
+          onError(err.detail || "Analysis failed");
+          return;
+        }
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
-        let currentEvent = "";
-        for (const line of lines) {
-          if (line.startsWith("event:")) {
-            currentEvent = line.slice(6).trim();
-          } else if (line.startsWith("data:")) {
-            const data = line.slice(5).trim();
-            if (!data) continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (currentEvent === "progress") {
-                onProgress(parsed as StreamProgress);
-              } else if (currentEvent === "result") {
-                onResult(parsed as AnalyzeResponse);
-              } else if (currentEvent === "error") {
-                onError(parsed.message || "Analysis failed");
+          let currentEvent = "";
+          for (const line of lines) {
+            if (line.startsWith("event:")) {
+              currentEvent = line.slice(6).trim();
+            } else if (line.startsWith("data:")) {
+              const data = line.slice(5).trim();
+              if (!data) continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (currentEvent === "progress") {
+                  onProgress(parsed as StreamProgress);
+                } else if (currentEvent === "result") {
+                  onResult(parsed as AnalyzeResponse);
+                } else if (currentEvent === "error") {
+                  onError(parsed.message || "Analysis failed");
+                }
+              } catch {
+                // skip malformed JSON
               }
-            } catch {
-              // skip malformed JSON
+              currentEvent = "";
             }
-            currentEvent = "";
           }
         }
-      }
-    })
-    .catch((err) => {
-      if (err.name !== "AbortError") {
-        onError(err.message || "Stream connection failed");
-      }
-    });
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          onError(err.message || "Stream connection failed");
+        }
+      });
+  });
 
   return controller;
 }
