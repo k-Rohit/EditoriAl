@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Loader2, Sparkles, Zap, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, Sparkles, MapPin } from 'lucide-react';
 import { fetchForYou, type TrendingStory } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -64,10 +64,8 @@ const ForYouPage = ({ onBack, onAnalyze }: ForYouPageProps) => {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-primary" />
-            </div>
-            <span className="text-base sm:text-lg font-semibold tracking-tight text-foreground">ET Chronicle</span>
+            <img src="/icon.png" alt="EditoriAI" className="w-8 h-8 rounded-lg" />
+            <span className="text-base sm:text-lg font-semibold tracking-tight text-foreground">EditoriAI</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-primary">
@@ -166,8 +164,8 @@ const ForYouPage = ({ onBack, onAnalyze }: ForYouPageProps) => {
       <footer className="relative z-10 border-t border-border py-6 sm:py-8 px-4 sm:px-8">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <Zap className="w-3.5 h-3.5 text-primary/50" />
-            ET Chronicle
+            <img src="/icon.png" alt="EditoriAI" className="w-4 h-4 rounded" />
+            EditoriAI
           </div>
           <p className="text-[10px] sm:text-xs text-muted-foreground/50">Personalized for you</p>
         </div>

@@ -1,5 +1,5 @@
 """
-FastAPI backend for ET Chronicle.
+FastAPI backend for EditoriAI.
 """
 
 import json
@@ -19,7 +19,7 @@ from trending import get_trending_stories, get_local_news, get_foryou_stories
 from auth import get_current_user
 
 
-app = FastAPI(title="ET Chronicle API")
+app = FastAPI(title="EditoriAI API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -258,6 +258,8 @@ async def deep_dive(req: DeepDiveRequest, user: dict = Depends(get_current_user)
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error in /api/deep-dive: {e}")
         raise HTTPException(500, f"Deep dive generation failed: {str(e)}")
 

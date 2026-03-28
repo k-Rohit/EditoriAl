@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Flame, Zap, Loader2, Home, MapPin } from 'lucide-react';
+import { Search, Flame, Loader2, Home, MapPin } from 'lucide-react';
 import { fetchTrending, fetchLocalNews, type TrendingStory } from '@/services/api';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
@@ -53,10 +53,8 @@ const AppSidebar = ({ onSelectStory, searchQuery, onSearch, onSearchSubmit, onGo
       {/* Logo + Home */}
       <div className="px-5 py-5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Zap className="w-3.5 h-3.5 text-primary" />
-          </div>
-          <span className="text-sm font-semibold tracking-tight text-foreground">ET Chronicle</span>
+          <img src="/icon.png" alt="EditoriAI" className="w-7 h-7 rounded-lg" />
+          <span className="text-sm font-semibold tracking-tight text-foreground">EditoriAI</span>
         </div>
         {onGoHome && (
           <button

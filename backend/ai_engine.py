@@ -64,7 +64,7 @@ async def generate_briefing(query: str, articles: list[dict]) -> dict:
     source_names = list({a.get("source", "Economic Times") for a in articles if a.get("source")})
     article_urls = [a.get("url", "") for a in articles if a.get("url")]
 
-    prompt = f"""You are an AI news analyst for ET Chronicle, an intelligence platform built on Economic Times journalism.
+    prompt = f"""You are an AI news analyst for EditoriAI, an intelligence platform built on Economic Times journalism.
 
 Given the following Economic Times articles about "{query}", generate a comprehensive briefing.
 
@@ -155,7 +155,7 @@ Rules:
     response = await client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+        temperature=0.4,
         max_tokens=4000,
     )
 
@@ -186,7 +186,7 @@ async def chat_answer(question: str, story_context: dict, articles: list[dict], 
             role = "User" if msg.get("role") == "user" else "AI"
             history_text += f"{role}: {msg.get('content', '')}\n"
 
-    prompt = f"""You are the AI assistant for ET Chronicle, answering questions about: "{story_title}"
+    prompt = f"""You are the AI assistant for EditoriAI, answering questions about: "{story_title}"
 
 Story Summary: {story_summary}
 
@@ -262,12 +262,17 @@ All data must be grounded in the provided excerpts."""
     response = await client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+        temperature=0.4,
         max_tokens=2000,
         response_format={"type": "json_object"},
     )
 
-    result = json.loads(response.choices[0].message.content)
+    content = response.choices[0].message.content
+    if not content:
+        print(f"[generate_briefing_rag] Empty response. finish_reason={response.choices[0].finish_reason}")
+        raise ValueError("Model returned empty response")
+
+    result = json.loads(content)
     result["id"] = "story_1"
     return result
 
@@ -286,7 +291,7 @@ async def chat_answer_rag(question: str, story_context: dict, chunks: list[dict]
             role = "User" if msg.get("role") == "user" else "AI"
             history_text += f"{role}: {msg.get('content', '')}\n"
 
-    prompt = f"""You are the AI assistant for ET Chronicle, answering questions about: "{story_title}"
+    prompt = f"""You are the AI assistant for EditoriAI, answering questions about: "{story_title}"
 
 Story Summary: {story_summary}
 
@@ -337,62 +342,90 @@ async def generate_deep_dive(query: str, chunks: list[dict], story_context: dict
     story_summary = story_context.get("summary", "")
     story_title = story_context.get("title", "")
 
-    prompt = f"""You are a senior editorial analyst at ET Chronicle. Generate a magazine-style deep dive for: "{story_title}"
+    prompt = f"""You are an editorial analyst writing a deep dive based STRICTLY on the source excerpts below.
 
-Story Summary: {story_summary}
+ABSOLUTE RULE: You must ONLY use facts, names, dates, numbers, and quotes that appear in the SOURCE EXCERPTS below. Do NOT invent, assume, or add ANY information not explicitly stated in the sources. If a date is not mentioned in the sources, do not guess one. If a number is not in the sources, do not make one up. Every single claim must be traceable to the provided text.
 
-SOURCE EXCERPTS:
+Story: "{story_title}"
+Summary: {story_summary}
+
+SOURCE EXCERPTS (use ONLY these — nothing else):
 {context}
 
 Return JSON:
 {{
-  "headline": "A provocative, magazine-style headline (different from the briefing title)",
-  "subtitle": "A one-line editorial hook that makes the reader want to scroll",
+  "headline": "Compelling headline derived from the articles",
+  "subtitle": "One-line hook based on what the articles actually say",
   "narrative": [
     {{
-      "heading": "Section heading (compelling, not generic)",
-      "body": "2-4 detailed paragraphs telling this part of the story. Write like a long-form journalist — include specific names, numbers, dates, context. Connect the dots between different sources. This should read like a magazine feature article, not a summary."
+      "heading": "Section heading",
+      "body": "Detailed paragraphs using ONLY facts from the source excerpts. Cite specifics: names, figures, dates exactly as they appear in the sources."
     }}
   ],
   "sentiment": {{
     "score": 0.3,
     "label": "bullish|bearish|neutral|mixed",
-    "summary": "2-sentence analysis of overall sentiment across all sources",
+    "summary": "2-sentence sentiment analysis based on tone of the articles",
     "signals": [
-      {{"source": "article/entity name", "direction": "positive|negative|neutral", "detail": "one-line signal"}}
+      {{"source": "entity/person mentioned in articles", "direction": "positive|negative|neutral", "detail": "signal from the articles"}}
     ]
   }},
   "bull_bear": {{
-    "bull_title": "The Bull Case (3-5 words)",
-    "bull_points": ["point1", "point2", "point3"],
-    "bear_title": "The Bear Case (3-5 words)",
-    "bear_points": ["point1", "point2", "point3"],
-    "verdict": "1-2 sentence balanced verdict"
+    "bull_title": "Bull Case title",
+    "bull_points": ["point from articles", "point2", "point3"],
+    "bear_title": "Bear Case title",
+    "bear_points": ["point from articles", "point2", "point3"],
+    "verdict": "Balanced verdict based on what articles say"
   }},
   "key_numbers": [
-    {{"value": "formatted number/stat", "label": "what it measures", "context": "why it matters (1 sentence)"}}
+    {{"value": "exact figure from articles", "label": "what it measures", "context": "why it matters per the articles"}}
   ],
-  "eli5": "3-4 sentence explanation in simple everyday language. No jargon.",
+  "eli5": "4-5 sentence simple explanation using only facts from the articles.",
   "scenarios": [
-    {{"title": "Scenario name (3-6 words)", "description": "2-3 sentence outcome", "likelihood": "likely|possible|unlikely", "timeframe": "e.g. 3-6 months"}}
+    {{"title": "Scenario name", "description": "Outcome based on what articles suggest", "likelihood": "likely|possible|unlikely", "timeframe": "timeframe if mentioned, otherwise say near-term/medium-term"}}
   ]
 }}
 
-Rules:
-- narrative: 3-5 sections. This is the CORE of the deep dive — a detailed, well-written editorial that synthesizes all the articles into one cohesive long-form story. Each section body should be 150-300 words. Use specific details, data, names from the articles. Write engagingly, not robotically.
-- sentiment.score: float -1 (bearish) to 1 (bullish)
-- sentiment.signals: 3-4 from different sources
-- bull_bear: exactly 3 points each, specific with data
-- key_numbers: 4-6 stats from articles
-- scenarios: exactly 3 (1 likely, 1 possible, 1 unlikely) with timeframes
-- All content grounded in provided excerpts"""
+RULES:
+- narrative: 3-4 sections, each 150-300 words. EVERY fact must come from the source excerpts. Do not hallucinate dates, numbers, or events.
+- If the sources don't mention a specific date, write "recently" or "according to reports" — NEVER invent a date.
+- If the sources don't mention a specific number, do not fabricate one.
+- key_numbers: ONLY include numbers that are explicitly stated in the source excerpts. If fewer than 4 numbers exist in sources, return fewer.
+- sentiment.signals: 3-4 signals derived from the articles
+- bull_bear: 3 points each, all grounded in article content
+- scenarios: 3 forward-looking scenarios based on what the articles suggest
+- When in doubt, quote or paraphrase the source material directly rather than adding your own interpretation"""
 
     response = await client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
-        max_tokens=4000,
+
+        max_tokens=10000,
+        temperature=0.3,
         response_format={"type": "json_object"},
     )
 
-    return json.loads(response.choices[0].message.content)
+    text = response.choices[0].message.content.strip()
+
+    # Handle truncated JSON from token limit
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        import re
+        # Close any unclosed string (odd number of unescaped quotes)
+        quote_count = len(re.findall(r'(?<!\\)"', text))
+        if quote_count % 2 != 0:
+            text += '"'
+        # Strip trailing incomplete key-value pairs or dangling commas
+        text = re.sub(r',\s*"[^"]*"?\s*:?\s*"?[^"]*$', '', text)
+        text = re.sub(r',\s*$', '', text)
+        # Close unclosed brackets and braces
+        open_brackets = text.count('[') - text.count(']')
+        open_braces = text.count('{') - text.count('}')
+        text += ']' * max(0, open_brackets) + '}' * max(0, open_braces)
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            print(f"[generate_deep_dive] JSON repair failed: {e}")
+            print(f"[generate_deep_dive] Last 200 chars: {text[-200:]}")
+            raise ValueError(f"Deep dive generation failed: {e}")

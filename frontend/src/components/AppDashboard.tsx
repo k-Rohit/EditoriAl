@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageCircle, Menu, X, Home, Zap, Layers } from 'lucide-react';
+import { MessageCircle, Menu, X, Home } from 'lucide-react';
 import AppSidebar from '@/components/AppSidebar';
 import BriefingPanel from '@/components/BriefingPanel';
 import QADock from '@/components/QADock';
@@ -63,8 +63,8 @@ const AppDashboard = ({ story, sessionId, articleCount, articleMeta, onNewSearch
             {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
           <div className="flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-primary" />
-            <span className="text-sm font-semibold text-foreground">ET Chronicle</span>
+            <img src="/icon.png" alt="EditoriAI" className="w-5 h-5 rounded" />
+            <span className="text-sm font-semibold text-foreground">EditoriAI</span>
           </div>
         </div>
         <button

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Zap, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import AppFooter from '@/components/AppFooter';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -34,10 +35,8 @@ const Login = () => {
 
       <div className="relative w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-primary" />
-          </div>
-          <span className="text-xl font-semibold text-foreground">ET Chronicle</span>
+          <img src="/icon.png" alt="EditoriAI" className="w-10 h-10 rounded-xl" />
+          <span className="text-xl font-semibold text-foreground">EditoriAI</span>
         </div>
 
         <div className="glass-panel rounded-2xl p-8">

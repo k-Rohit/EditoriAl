@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Mail, Lock, User, ArrowRight, ArrowLeft, Loader2, Check, Zap } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -75,7 +75,7 @@ const AuthModal = ({ onClose, initialView = 'login' }: AuthModalProps) => {
     if (error) {
       toast.error(error);
     } else {
-      toast.success('Welcome to ET Chronicle!');
+      toast.success('Welcome to EditoriAI!');
       onClose();
     }
   };
@@ -111,10 +111,8 @@ const AuthModal = ({ onClose, initialView = 'login' }: AuthModalProps) => {
 
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-primary" />
-          </div>
-          <span className="text-base font-semibold text-foreground">ET Chronicle</span>
+          <img src="/icon.png" alt="EditoriAI" className="w-8 h-8 rounded-lg" />
+          <span className="text-base font-semibold text-foreground">EditoriAI</span>
         </div>
 
         {/* ─── LOGIN ─── */}

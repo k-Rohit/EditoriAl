@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Zap, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { StreamProgress } from '@/services/api';
 
 interface LoadingScreenProps {
@@ -44,8 +44,8 @@ const LoadingScreen = ({ onComplete, onCancel, progress }: LoadingScreenProps) =
 
       <div className="relative text-center max-w-md mx-auto px-8">
         {/* Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-8 animate-pulse-glow">
-          <Zap className="w-7 h-7 text-primary" />
+        <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto mb-8 animate-pulse-glow">
+          <img src="/icon.png" alt="EditoriAI" className="w-full h-full" />
         </div>
 
         {/* Steps */}

@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/FAISS-Vector_Search-blue?style=for-the-badge" />
 </p>
 
-<h1 align="center">ET Chronicle</h1>
+<h1 align="center">EditoriaAl</h1>
 <p align="center">
   <strong>Stop reading news. Start interacting with it.</strong><br/>
   AI-powered news intelligence built on Economic Times journalism.

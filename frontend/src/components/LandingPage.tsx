@@ -100,7 +100,7 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
       .finally(() => setLoadingLocal(false));
   }, [location?.city]);
 
-  const quickTopics = trending.slice(0, 4).map((s) => s.title);
+  const quickTopics = trending.slice(0, 4);
   const cardStories = trending.slice(0, 6);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -119,10 +119,8 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-4 sm:px-8 py-5 sm:py-6 max-w-6xl mx-auto">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-primary" />
-          </div>
-          <span className="text-base sm:text-lg font-semibold tracking-tight text-foreground">ET Chronicle</span>
+          <img src="/icon.png" alt="EditoriAI" className="w-8 h-8 rounded-lg" />
+          <span className="text-base sm:text-lg font-semibold tracking-tight text-foreground">EditoriAI</span>
         </div>
         <div className="flex items-center gap-3">
           {user ? (
@@ -216,11 +214,11 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
         <div className={`flex flex-wrap justify-center gap-2 mt-4 sm:mt-6 transition-all duration-700 delay-[400ms] ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           {quickTopics.map((t) => (
             <button
-              key={t}
-              onClick={() => tryAnalyze(t)}
+              key={t.id}
+              onClick={() => tryAnalyze(t.title, t.url)}
               className="text-[11px] sm:text-xs px-3 sm:px-4 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all duration-200 active:scale-[0.96] text-left leading-snug"
             >
-              {t}
+              {t.title}
             </button>
           ))}
         </div>
@@ -384,8 +382,8 @@ const LandingPage = ({ onAnalyze }: LandingPageProps) => {
       <footer className="relative z-10 border-t border-border py-6 sm:py-8 px-4 sm:px-8">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <Zap className="w-3.5 h-3.5 text-primary/50" />
-            ET Chronicle
+            <img src="/icon.png" alt="EditoriAI" className="w-4 h-4 rounded" />
+            EditoriAI
           </div>
           <p className="text-[10px] sm:text-xs text-muted-foreground/50">From breaking news to full narrative</p>
         </div>
