@@ -27,7 +27,7 @@ const QADock = ({ sessionId, storyTitle, initialQuestion, onClose }: QADockProps
 
   // Fetch Deepgram key from backend config
   useEffect(() => {
-    fetch('http://localhost:8000/api/config')
+    fetch(`${import.meta.env.VITE_API_BASE || ''}/api/config`)
       .then(r => r.json())
       .then(d => { if (d.deepgramApiKey) setDeepgramKey(d.deepgramApiKey); })
       .catch(() => {});
