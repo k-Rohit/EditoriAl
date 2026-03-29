@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/FAISS-Vector_Search-blue?style=for-the-badge" />
 </p>
 
-<h1 align="center">EditoriaAl</h1>
+<h1 align="center">EditoriAI</h1>
 <p align="center">
   <strong>Stop reading news. Start interacting with it.</strong><br/>
   AI-powered news intelligence built on Economic Times journalism.
@@ -30,7 +30,7 @@ Reading 10 articles on the same topic to piece together the full picture is exha
 
 ## The Solution
 
-**EditoriaAl** scrapes Economic Times articles in real-time, runs them through a **RAG pipeline** (chunk, embed, retrieve), and delivers structured intelligence via GPT-4o-mini that you can *interact* with — personalized feeds, AI briefings, and voice-powered Q&A, all grounded in ET journalism.
+**EditoriAI** scrapes Economic Times articles in real-time, runs them through a **RAG pipeline** (chunk, embed, retrieve), and delivers structured intelligence via GPT-4o-mini that you can *interact* with — personalized feeds, AI briefings, deep dive analysis, and voice-powered Q&A, all grounded in ET journalism.
 
 ---
 
@@ -45,13 +45,22 @@ Reading 10 articles on the same topic to piece together the full picture is exha
 - Timeline of events with sentiment tracking
 - Suggested follow-up questions to ask the story
 
+### Deep Dive Analysis
+> Go beyond the briefing with full-page immersive analysis
+
+- Narrative breakdown with detailed sections
+- Bull vs Bear analysis with verdict
+- Sentiment scoring with directional signals
+- Key numbers with context
+- ELI5 (Explain Like I'm 5) summary
+- Future scenario projections with likelihood and timeframe
+
 ### For You
 > Personalized news feed based on your interests
 
 - Select preferred domains during signup (Markets, Tech, Startups, Economy, etc.)
 - Curated stories fetched from ET sections matching your interests
 - Accessible via a floating sparkle button on the landing page
-- Smooth page transition animations between views
 
 ### Voice Q&A
 > Ask questions by voice or text — get cited answers
@@ -60,13 +69,21 @@ Reading 10 articles on the same topic to piece together the full picture is exha
 - Falls back to Web Speech API when Deepgram is unavailable
 - Concise, grounded answers with source citations
 - Per-question RAG retrieval for focused, relevant answers
+- Full-screen chat on mobile, side panel on desktop
+
+### Listen Mode
+> Have any briefing or deep dive read aloud
+
+- Text-to-speech powered by Deepgram Aura TTS
+- Falls back to browser TTS when Deepgram is unavailable
+- Audio caching to avoid re-generating the same content
 
 ### Live Trending & Local News
 > Always know what's breaking on Economic Times
 
 - Real-time trending stories scraped from ET homepage with images
 - Location-based local news using geolocation
-- One-click analysis of any story
+- One-click analysis of any trending story (fetches article directly, skips search)
 - 5-minute intelligent cache for performance
 
 ### Authentication
@@ -85,8 +102,8 @@ Reading 10 articles on the same topic to piece together the full picture is exha
 ┌────────────────────────────────────────────────────────────────┐
 │                       React Frontend                           │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────┐          │
-│  │ Landing   │  │ Briefing │  │ For You  │  │ Q&A  │          │
-│  │ Page      │  │ Panel    │  │ Page     │  │ Dock │          │
+│  │ Landing   │  │ Briefing │  │ Deep     │  │ Q&A  │          │
+│  │ Page      │  │ Panel    │  │ Dive     │  │ Dock │          │
 │  └────┬──┬──┘  └────┬─────┘  └────┬─────┘  └──┬───┘          │
 │       │  │          │              │            │              │
 │       │  │   ┌──────┴──────────────┴────────────┘              │
@@ -102,21 +119,26 @@ Reading 10 articles on the same topic to piece together the full picture is exha
 │              │         FastAPI Backend                          │
 │  ┌───────────▼──────────────────────────────────────────────┐  │
 │  │                   REST API (main.py)                      │  │
-│  │  /analyze-stream  /analyze  /chat  /foryou  /trending     │  │
-│  │  (SSE progress)   (auth)    (auth) (auth)   (public)      │  │
-│  └────┬──────────────┬─────────┬──────┬─────────┬───────────┘  │
-│       │              │         │      │         │              │
-│  ┌────▼────┐   ┌─────▼───┐  ┌─▼──────▼──┐  ┌──▼──────────┐  │
-│  │  RAG    │   │   AI    │  │ Trending  │  │ Supabase    │  │
-│  │ Engine  │   │ Engine  │  │ + ForYou  │  │ Auth Verify │  │
-│  │ (FAISS) │   │ (GPT-4o)│  │ Scraper   │  │ (auth.py)   │  │
-│  └────┬────┘   └────┬────┘  └───────────┘  └─────────────┘  │
-│       │              │                                        │
-│  ┌────▼──────────────▼────┐    ┌─────────────────────┐       │
-│  │ sentence-transformers  │    │   ET News Scraper   │       │
-│  │ (all-MiniLM-L6-v2)    │    │   (JSON-LD + HTML)  │       │
-│  │ + FAISS IndexFlatIP    │    │   + Semantic Rank   │       │
-│  └────────────────────────┘    └─────────────────────┘       │
+│  │  /analyze-stream  /chat  /deep-dive  /foryou  /trending   │  │
+│  │  (SSE progress)   (auth) (auth)      (auth)   (public)    │  │
+│  └────┬──────────────┬──────┬───────────┬─────────┬─────────┘  │
+│       │              │      │           │         │            │
+│  ┌────▼────┐   ┌─────▼───┐ │      ┌────▼──────┐  │           │
+│  │  RAG    │   │   AI    │ │      │ Trending  │  │           │
+│  │ Engine  │   │ Engine  │ │      │ + ForYou  │  │           │
+│  │ (FAISS) │   │ (GPT-4o)│ │      │ Scraper   │  │           │
+│  └────┬────┘   └────┬────┘ │      └───────────┘  │           │
+│       │              │      │                     │           │
+│  ┌────▼──────────────▼──┐   │  ┌──────────────────▼────────┐ │
+│  │ OpenAI Embeddings    │   │  │   ET News Scraper         │ │
+│  │ (text-embedding-3-   │   │  │   (JSON-LD + HTML)        │ │
+│  │  small) + FAISS      │   │  │   + Semantic Rank         │ │
+│  └──────────────────────┘   │  └───────────────────────────┘ │
+│                             │                                 │
+│                    ┌────────▼──────────┐                      │
+│                    │ Supabase Auth     │                      │
+│                    │ Verify (auth.py)  │                      │
+│                    └──────────────────┘                       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -136,7 +158,7 @@ User Query
   │                              ┌───────────▼───────────┐
   │                              │    RAG Pipeline        │
   │                              │ 1. Chunk (250 words)   │
-  │                              │ 2. Embed (MiniLM-L6)   │
+  │                              │ 2. Embed (OpenAI)      │
   │                              │ 3. FAISS Index          │
   │                              │ 4. Retrieve top-k       │
   │                              └───────────┬────────────┘
@@ -165,13 +187,13 @@ User Query
 | Node.js | 16+ |
 | OpenAI API Key | Required |
 | Supabase Project | Required (auth + profiles) |
-| Deepgram API Key | Optional (voice input) |
+| Deepgram API Key | Optional (voice input + TTS) |
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/k-Rohit/ET_Chronicles.git
-cd ET_Chronicles
+git clone https://github.com/k-Rohit/EditoriAl.git
+cd EditoriAl
 ```
 
 ### 2. Supabase Setup
@@ -219,7 +241,7 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 ```
 
-3. Go to **Authentication → Providers → Email** and disable "Confirm email" (for hackathon)
+3. Go to **Authentication > Providers > Email** and disable "Confirm email" (for hackathon)
 
 ### 3. Backend Setup
 
@@ -246,6 +268,7 @@ python main.py
 ```
 
 > Backend runs at **http://localhost:8000**
+> API docs at **http://localhost:8000/docs**
 
 ### 4. Frontend Setup
 
@@ -271,10 +294,16 @@ npm run dev
 
 ## API Reference
 
+### `GET /`
+Root endpoint — returns service info and link to docs.
+
+### `GET /api/health`
+Health check — returns `{ "status": "ok" }`.
+
 ### `GET /api/analyze-stream` (Auth Required)
 SSE endpoint — streams progress events during analysis, then sends the final result.
 
-**Query params:** `?query=RBI+monetary+policy`
+**Query params:** `?query=RBI+monetary+policy` and optionally `&url=https://...` to analyze a specific article directly.
 
 **SSE Events:**
 ```
@@ -282,21 +311,13 @@ event: progress
 data: {"step": "scraping", "message": "Searching Economic Times..."}
 
 event: progress
-data: {"step": "embedding", "message": "Analyzing 9 articles with AI..."}
+data: {"step": "embedding", "message": "Reading & analyzing 9 articles..."}
 
 event: progress
 data: {"step": "generating", "message": "Generating intelligence briefing..."}
 
 event: result
 data: {"session_id": "uuid", "story": {...}, "articleCount": 9, "articleMeta": [...]}
-```
-
-### `POST /api/analyze` (Auth Required)
-Non-streaming fallback for analysis.
-
-**Request:**
-```json
-{ "query": "RBI monetary policy" }
 ```
 
 ### `POST /api/chat` (Auth Required)
@@ -309,6 +330,14 @@ Ask follow-up questions with per-question RAG retrieval.
   "question": "What did the RBI governor say about inflation?",
   "chat_history": []
 }
+```
+
+### `POST /api/deep-dive` (Auth Required)
+Generate a full deep dive analysis for a session.
+
+**Request:**
+```json
+{ "session_id": "uuid" }
 ```
 
 ### `POST /api/foryou` (Auth Required)
@@ -325,8 +354,13 @@ Fetch live trending stories from ET homepage with images.
 ### `POST /api/local-news` (Public)
 Fetch location-based news from ET city editions.
 
-### `GET /api/health`
-Health check — returns `{ "status": "ok" }`.
+**Request:**
+```json
+{ "city": "Mumbai", "state": "Maharashtra" }
+```
+
+### `GET /api/config` (Public)
+Returns public configuration (Deepgram API key for client-side voice input).
 
 ---
 
@@ -337,10 +371,10 @@ Health check — returns `{ "status": "ok" }`.
 | Technology | Purpose |
 |-----------|---------|
 | **FastAPI** | Async REST API framework with SSE support |
-| **OpenAI GPT-4o-mini** | Briefing generation & conversational Q&A |
-| **sentence-transformers** | Local text embeddings (all-MiniLM-L6-v2) |
+| **OpenAI GPT-4o-mini** | Briefing generation, deep dive analysis & conversational Q&A |
+| **OpenAI Embeddings** | Text embeddings via `text-embedding-3-small` (1536-dim) |
 | **FAISS** | In-memory vector search for RAG retrieval |
-| **Supabase** | Auth verification via `/auth/v1/user` |
+| **Supabase** | Auth verification via JWT |
 | **httpx** | Async HTTP client for web scraping |
 | **BeautifulSoup4** | HTML parsing & content extraction |
 | **sse-starlette** | Server-Sent Events for streaming progress |
@@ -357,8 +391,7 @@ Health check — returns `{ "status": "ok" }`.
 | **Tailwind CSS** | Utility-first styling with custom dark design system |
 | **Supabase JS** | Auth client (email/password, session management) |
 | **shadcn/ui** | Radix-based component library |
-| **Deepgram SDK** | Real-time voice-to-text transcription |
-| **TanStack Query** | Server state management |
+| **Deepgram** | Real-time voice-to-text (STT) and text-to-speech (TTS) |
 | **Lucide** | Icon library |
 
 ---
@@ -366,16 +399,18 @@ Health check — returns `{ "status": "ok" }`.
 ## Project Structure
 
 ```
-ET_Chronicles/
+EditoriAl/
 │
 ├── backend/
 │   ├── main.py              # FastAPI app, REST + SSE endpoints, auth middleware
-│   ├── ai_engine.py         # OpenAI briefing (RAG-aware) & chat logic
-│   ├── rag_engine.py        # RAG pipeline: chunk, embed, FAISS index, retrieve
+│   ├── ai_engine.py         # OpenAI briefing (RAG-aware), deep dive & chat logic
+│   ├── rag_engine.py        # RAG pipeline: chunk, embed (OpenAI), FAISS index, retrieve
 │   ├── news_scraper.py      # ET article scraping + semantic ranking
 │   ├── trending.py          # Trending, local news, and For You scrapers
 │   ├── auth.py              # Supabase JWT verification dependency
 │   ├── requirements.txt     # Python dependencies
+│   ├── Procfile             # Railway start command
+│   ├── nixpacks.toml        # Railway build config
 │   └── .env.example         # Environment variable template
 │
 ├── frontend/
@@ -385,6 +420,7 @@ ET_Chronicles/
 │   │   │   ├── AppDashboard.tsx     # Dashboard layout (sidebar + briefing + Q&A)
 │   │   │   ├── AppSidebar.tsx       # Navigation sidebar with trending/local lists
 │   │   │   ├── BriefingPanel.tsx    # AI briefing view (facts, impact, timeline)
+│   │   │   ├── DeepDivePage.tsx     # Full-page deep dive analysis
 │   │   │   ├── ForYouPage.tsx       # Personalized news feed by domain
 │   │   │   ├── AuthModal.tsx        # Login/signup modal overlay with domain picker
 │   │   │   ├── QADock.tsx           # Voice/text Q&A chat panel
@@ -392,18 +428,22 @@ ET_Chronicles/
 │   │   ├── contexts/
 │   │   │   └── AuthContext.tsx      # Supabase auth state provider
 │   │   ├── hooks/
-│   │   │   └── useVoiceInput.ts     # Deepgram WebSocket + Web Speech fallback
+│   │   │   ├── useVoiceInput.ts    # Deepgram WebSocket + Web Speech fallback
+│   │   │   └── useTextToSpeech.ts  # Deepgram Aura TTS + browser TTS fallback
 │   │   ├── lib/
-│   │   │   └── supabase.ts          # Supabase client initialization
+│   │   │   ├── supabase.ts         # Supabase client initialization
+│   │   │   └── utils.ts            # Utility functions
 │   │   ├── services/
-│   │   │   └── api.ts               # API client with auth headers & SSE streaming
+│   │   │   └── api.ts              # API client with auth headers & SSE streaming
 │   │   └── pages/
-│   │       └── Index.tsx            # Main page state machine (landing/loading/dashboard/foryou)
-│   ├── .env.local                   # Frontend env vars (Supabase + API base)
-│   ├── package.json
-│   └── tailwind.config.ts           # Custom design system (glass, sentiment colors)
+│   │       └── Index.tsx           # Main page state machine
+│   ├── public/
+│   │   └── icon.png               # App icon
+│   ├── vercel.json                # Vercel SPA rewrite config
+│   ├── .env.local                 # Frontend env vars (not committed)
+│   └── package.json
 │
-├── supabase_migration.sql           # Profiles table + RLS + trigger
+├── railway.json                   # Railway monorepo config
 └── README.md
 ```
 
@@ -413,10 +453,10 @@ ET_Chronicles/
 
 ### RAG Pipeline
 
-Instead of sending all article text directly to the LLM (~20K+ tokens), ET Chronicle uses a **Retrieval-Augmented Generation** pipeline:
+Instead of sending all article text directly to the LLM (~20K+ tokens), EditoriAI uses a **Retrieval-Augmented Generation** pipeline:
 
 1. **Chunk** — Each article split into ~250-word overlapping chunks with metadata
-2. **Embed** — All chunks encoded locally using `all-MiniLM-L6-v2` (384-dim vectors)
+2. **Embed** — All chunks encoded via OpenAI `text-embedding-3-small` (1536-dim vectors)
 3. **Index** — FAISS `IndexFlatIP` for cosine similarity search (instant for <200 chunks)
 4. **Retrieve** — Top-k chunks most relevant to the query (~4K tokens vs ~20K+)
 5. **Generate** — GPT-4o-mini produces structured briefing from focused context
@@ -429,7 +469,7 @@ Article search results are ranked using **embedding-based cosine similarity** on
 
 ### Scraping Strategy
 
-Economic Times is a Next.js SPA. ET Chronicle extracts article text from **JSON-LD structured data** (`<script type="application/ld+json">`) embedded in each page, which contains the full `articleBody`. Search queries run in parallel via `asyncio.gather` for 2-4x speedup.
+Economic Times is a Next.js SPA. EditoriAI extracts article text from **JSON-LD structured data** (`<script type="application/ld+json">`) embedded in each page, which contains the full `articleBody`. Search queries run in parallel via `asyncio.gather` for 2-4x speedup.
 
 ### Voice Input Pipeline
 
@@ -444,16 +484,16 @@ Economic Times is a Next.js SPA. ET Chronicle extracts article text from **JSON-
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | OpenAI API key for GPT-4o-mini |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for GPT-4o-mini + embeddings |
 | `SUPABASE_URL` | Yes | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
-| `DEEPGRAM_API_KEY` | No | Deepgram API key for voice-to-text |
+| `DEEPGRAM_API_KEY` | No | Deepgram API key for voice-to-text and TTS |
 
 ### Frontend (`frontend/.env.local`)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_API_BASE` | Yes | Backend URL (e.g. `http://localhost:8000`) |
+| `VITE_API_BASE` | Yes | Backend URL (`http://localhost:8000` for local dev) |
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
 
