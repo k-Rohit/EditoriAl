@@ -15,6 +15,7 @@
 </p>
 
 <p align="center">
+  <a href="https://editori-al.vercel.app">🌐 Live Demo</a> &bull;
   <a href="#features">Features</a> &bull;
   <a href="#architecture">Architecture</a> &bull;
   <a href="#getting-started">Getting Started</a> &bull;
@@ -26,7 +27,7 @@
 
 ## The Problem
 
-Reading 10 articles on the same topic to piece together the full picture is exhausting. News consumers waste time scrolling through repetitive coverage when they just need the signal.
+Business news in 2026 is still delivered like it's 2005 — static text articles, one-size-fits-all homepage, same format for everyone. Build something that makes people say "I can't go back to reading news the old way."
 
 ## The Solution
 
